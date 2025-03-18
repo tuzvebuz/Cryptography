@@ -79,8 +79,20 @@ chain = [genesisBlock]
 
 def makeBlock(txns,chain):
     parent_block = chain[-1]
+    parentHash = parent_block[u"contents"][u'blockNumber'] +  1 
+    txnCount = len(txns)
+    block_contents = {
+            u"Block_Number: ": block_number,
+            u"parentHash": parentHash,
+            u'txnCount': len(txns),
+            "txns": txns
 
+        }
+    blockHash = hashFunction(block_contents)
 
+    block = {u"Hash": blockHash, "content": block_contents}
+
+    return block
 
 
 
