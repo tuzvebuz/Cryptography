@@ -1,5 +1,18 @@
 import hashlib,sys,json
 import random
+from pprint import pprint
+state = {
+    "Alice": 7423,
+    "Bob": 1589,
+    "Charlie": 9345,
+    "Diana": 276,
+    "Eve": 6012,
+    "Frank": 4897,
+    "Grace": 8201,
+    "Hank": 3456,
+    "Ivy": 1234,
+    "Jack": 9999
+}
 
 def hashFunction(data):
 
@@ -13,17 +26,17 @@ def hashFunction(data):
 
 
 
-def makeTransaction(amount=3):
+def makeTransaction(sender,recipient,amount=5):
     operations = [-1,1]
     sign = random.choice(operations)
     user2Pays = sign * amount
     user1Pays = user2Pays * -1
     
 
-    uniqueHash = hashFunction("user 1 / user 2")
+    uniqueHash = hashFunction(f"{user1Pays} | {user2Pays}")
 
     
-    return  f"User 1: {user1Pays} User 2: {user2Pays} transaction hash : {uniqueHash}"
+    return  {f"{sender}": user1Pays, f"{recipient}": user2Pays}
 
 
 
@@ -37,25 +50,29 @@ def updateState(amount, state):
             state[amo] = amount[amo]
     return state
 
-accountBalance = 0
-
-def isValid(txn,keys):
-    if sum(txn.values()) is not 0:
-        return False
-    for key in txn.keys():
-        if key in state.keys():
-            accountBalance = txn[key]
-        else:
-            accountBalance = 0
-            if (accountBalance + txn[key]) < 0:
-                return False
-    return True
-transactionsBuffer = [makeTransaction() for i in range(30)]
 
 
 
 
-state = {u'Alice':5,u'Bob':5}
+
+
+sub = list(state.keys())
+
+
+def randomSender(): 
+
+    sender = random.choice(sub)
+    return sender
+
+def randomReceiver():
+    receiver = random.choice(sub)
+    return receiver
+    
+txnBuffer = [makeTransaction(randomSender(), randomReceiver(), random.randint(0,10000)) for i in range(30)]
+
+
+
+
 
 genesisBlockAmount = [state]
 
@@ -65,7 +82,7 @@ genesisBlockContents = {u"block_number": 0, u"parent_hash": None,u"txns": genesi
 genesisHash = hashFunction(genesisBlockContents)
 
 
-genesisBlock = {u"hash": genesisHash, u"contents: ": genesisBlockContents}
+genesisBlock = {u"Hash": genesisHash, u"contents": genesisBlockContents}
 genesisBlockStr = json.dumps(genesisBlock, sort_keys=True)
 
 
@@ -79,10 +96,12 @@ chain = [genesisBlock]
 
 def makeBlock(txns,chain):
     parent_block = chain[-1]
-    parentHash = parent_block[u"contents"][u'blockNumber'] +  1 
+    parentHash = parent_block["Hash"]
+    block_number = parent_block[u"contents"][u'block_number'] +  1 
     txnCount = len(txns)
+
     block_contents = {
-            u"Block_Number: ": block_number,
+            u"block_number": block_number,
             u"parentHash": parentHash,
             u'txnCount': len(txns),
             "txns": txns
@@ -90,19 +109,43 @@ def makeBlock(txns,chain):
         }
     blockHash = hashFunction(block_contents)
 
-    block = {u"Hash": blockHash, "content": block_contents}
+    block = {u"Hash": blockHash, "contents": block_contents}
 
     return block
+blockSizeLimit = 2 
+
+
+def isValid(txn,state):
+    # If the amounts don't add up, if they seem to be generating currencies out of no where, return false
+
+    
+    for key in txn.keys():
+        if key in state.keys(): 
+            acctBalance = state[key]
+        else:
+            acctBalance = 0
+        if (acctBalance + txn[key]) < 0:
+            return False
+    
+    return True
 
 
 
+while len(txnBuffer) > 0:
+    bufferStartSize = len(txnBuffer)
+    
+    txnList = []
 
+    while (len(txnBuffer) > 0) & (len(txnList) < blockSizeLimit):
+        newTxn = txnBuffer.pop()
+        # TODO CHECK VALIDITY
+        txnList.append(newTxn)
+        state = updateState(newTxn, state)
 
-print(genesisBlockStr)
+    myBlock = makeBlock(txnList, chain)
+    chain.append(myBlock)
+    print("New Block added")
 
-print(transactionsBuffer)
-print(isValid({u'Alice': -3, u'Bob': 3},state))
-print(isValid({u'Alice': -2, u'Bob': 3},state))
-print(isValid({u'Alice': -3, u'Bob': 4},state))
-print(isValid({u'Alice': -7, u'Bob': 7},state))
-print(isValid({u'Alice': -4, u'Bob': 4},state))
+pprint(genesisBlockStr)
+for i in chain:
+    pprint(i)
